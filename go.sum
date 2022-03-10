@@ -1,4 +1,6 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/Karim-W/socketcluster-client-go v1.0.0 h1:/7XM3bChaZHxEw6lQXdGYb1V1F8TfyzthNZv2IN01cY=
+github.com/Karim-W/socketcluster-client-go v1.0.0/go.mod h1:SuGvTcVb0BsESI6RPDKd83oHDBvSlJ3A06OptiDmer4=
 github.com/andybalholm/brotli v1.0.0 h1:7UCwP93aiSfvWpapti8g88vVVGp2qqtGyePsSuDafo4=
 github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=

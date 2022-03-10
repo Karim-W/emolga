@@ -52,6 +52,7 @@ func (r *RedisManager) SubToPikaEvents(manager *services.PodManager) {
 			r.logger.Error(err)
 		}
 		fmt.Println("Got message: " + msg.Payload)
+		r.podUpdateHandler(manager, podUpdate)
 	}
 }
 

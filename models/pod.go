@@ -1,6 +1,6 @@
 package models
 
-import "github.com/sacOO7/socketcluster-client-go/scclient"
+import "github.com/karim-w/emolga/modules/scclient"
 
 type Pod struct {
 	PodName string `json:"id"`
