@@ -2,10 +2,14 @@ package redishelper
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/karim-w/emolga/models"
+	"github.com/karim-w/emolga/services"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -33,6 +37,34 @@ func (r *RedisManager) AddToSet(key string, value string) *redis.IntCmd {
 }
 func (r *RedisManager) GetFromSet(key string) *redis.StringSliceCmd {
 	return r.client.SMembers(r.ctx, key)
+}
+
+func (r *RedisManager) SubToPikaEvents(manager *services.PodManager) {
+	subscriber := r.client.Subscribe(r.ctx, "pika_events")
+	for {
+		msg, err := subscriber.ReceiveMessage(r.ctx)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		podUpdate := models.PodUpdates{}
+		err = json.Unmarshal([]byte(msg.Payload), &podUpdate)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		fmt.Println("Got message: " + msg.Payload)
+	}
+}
+
+func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject models.PodUpdates) {
+	r.logger.Info(podObject)
+	if podObject.State == "spawn" {
+		manager.AddPod(models.Pod{
+			PodName: podObject.PodName,
+			PodIp:   podObject.PodIp,
+		})
+	} else {
+		manager.RemovePod(podObject.PodName)
+	}
 }
 
 func NewRedisManager(logger *zap.SugaredLogger) *RedisManager {
