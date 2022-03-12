@@ -57,11 +57,6 @@ func (r *RedisManager) SubToPikaEvents(manager *services.PodManager) {
 	}
 }
 
-func (r *RedisManager) Orchestrate() {
-	r.logger.Info("Orchestrating")
-
-}
-
 func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject models.PodUpdates) {
 	r.logger.Info(podObject)
 	if podObject.State == "spawn" {
@@ -73,7 +68,62 @@ func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject 
 		manager.RemovePod(podObject.PodName)
 	}
 }
+func (r *RedisManager) Orchestrate() {
+	r.logger.Info("Orchestrating")
+	go func() { //listen to Spawned Pods
+		defer r.logger.Info("Spawned Pods Listener Stopped")
+		r.spawnedPodsListener()
+	}()
+	go func() { //listen to killed Pods
+		defer r.logger.Info("Killed Pods Listener Stopped")
+		r.killedPodsListener()
+	}()
+	go func() { //Listen to Presence Updates
+		defer r.logger.Info("PresenceUpdate Listener Stopped")
+		r.PresenceUpdateListener()
+	}()
+}
 
+//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: Listeners :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
+func (r *RedisManager) spawnedPodsListener() {
+	spawnSubscriber := r.client.Subscribe(r.ctx, "spawned_pods")
+	for {
+		msg, err := spawnSubscriber.ReceiveMessage(r.ctx)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		pod := models.Pod{}
+		err = json.Unmarshal([]byte(msg.Payload), &pod)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		r.logger.Info("Adding Pod:	", pod)
+		r.manager.AddPod(pod)
+	}
+}
+
+func (r *RedisManager) killedPodsListener() {
+	spawnSubscriber := r.client.Subscribe(r.ctx, "killed_pods")
+	for {
+		msg, err := spawnSubscriber.ReceiveMessage(r.ctx)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		pod := models.Pod{}
+		err = json.Unmarshal([]byte(msg.Payload), &pod)
+		if err != nil {
+			r.logger.Error(err)
+		}
+		r.logger.Info("Removing Pod:	", pod.PodName)
+		r.manager.RemovePod(pod.PodName)
+	}
+}
+
+func (r *RedisManager) PresenceUpdateListener() {
+
+}
+
+//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: DI :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
 func NewRedisManager(logger *zap.SugaredLogger, pod *services.PodManager) *RedisManager {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_URL"),
