@@ -5,18 +5,17 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/karim-w/emolga/helpers/redishelper"
-	"github.com/karim-w/emolga/services"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, manager *services.PodManager) *fiber.App {
+func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager) *fiber.App {
 	app := fiber.New(fiber.Config{
 		Prefork:      false,
 		ServerHeader: "Fiber",
 		AppName:      "Emolga",
 	})
-	go redis.SubToPikaEvents(manager)
+	go redis.Orchestrate()
 	app.Get("/", func(c *fiber.Ctx) error {
 		log.Info("Hello world")
 		return c.SendString("Hello, World 👋!")

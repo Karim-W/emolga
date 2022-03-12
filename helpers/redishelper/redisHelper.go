@@ -15,9 +15,10 @@ import (
 )
 
 type RedisManager struct {
-	logger *zap.SugaredLogger
-	client *redis.Client
-	ctx    context.Context
+	logger  *zap.SugaredLogger
+	client  *redis.Client
+	ctx     context.Context
+	manager *services.PodManager
 }
 
 func (r *RedisManager) AddKeyValuePair(key string, value string) *redis.StatusCmd {
@@ -56,6 +57,11 @@ func (r *RedisManager) SubToPikaEvents(manager *services.PodManager) {
 	}
 }
 
+func (r *RedisManager) Orchestrate() {
+	r.logger.Info("Orchestrating")
+
+}
+
 func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject models.PodUpdates) {
 	r.logger.Info(podObject)
 	if podObject.State == "spawn" {
@@ -68,7 +74,7 @@ func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject 
 	}
 }
 
-func NewRedisManager(logger *zap.SugaredLogger) *RedisManager {
+func NewRedisManager(logger *zap.SugaredLogger, pod *services.PodManager) *RedisManager {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_URL"),
 		Password: "", // no password set
@@ -76,7 +82,7 @@ func NewRedisManager(logger *zap.SugaredLogger) *RedisManager {
 	})
 	ctx := context.Background()
 	rdb.Set(ctx, "foo", "bar", time.Hour*24)
-	return &RedisManager{logger, rdb, context.Background()}
+	return &RedisManager{logger, rdb, context.Background(), pod}
 }
 
 var RedisModule = fx.Option(fx.Provide(NewRedisManager))
