@@ -23,6 +23,13 @@ func (p *PodManager) RemovePod(podId string) {
 		}
 	}
 }
+func (p *PodManager) GetPodNames() []string {
+	podNames := []string{}
+	for _, pod := range p.pods {
+		podNames = append(podNames, pod.PodName)
+	}
+	return podNames
+}
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\::::: DI :::::::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
 func PodManagerProvider(log *zap.SugaredLogger) *PodManager {

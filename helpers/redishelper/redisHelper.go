@@ -5,134 +5,110 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/karim-w/emolga/models"
-	"github.com/karim-w/emolga/services"
+	"github.com/karim-w/emolga/models/commands"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 type RedisManager struct {
-	logger  *zap.SugaredLogger
-	client  *redis.Client
-	ctx     context.Context
-	manager *services.PodManager
+	logger *zap.SugaredLogger
+	trx    *redis.Client
+	sub    *redis.Client
+	ctx    context.Context
 }
 
 func (r *RedisManager) AddKeyValuePair(key string, value string) *redis.StatusCmd {
-	return r.client.Set(r.ctx, key, value, time.Hour*24)
+	return r.trx.Set(r.ctx, key, value, time.Hour*24)
 }
-func (r *RedisManager) GetValueFromKVPair(key string) *redis.StringCmd {
-	return r.client.Get(r.ctx, key)
+func (r *RedisManager) GetValueFromKVPair(key string) (string, error) {
+	return r.trx.Get(r.ctx, key).Result()
 }
 func (r *RedisManager) AddToHash(key string, field string, value string) *redis.IntCmd {
-	return r.client.HSet(r.ctx, key, field, value)
+	return r.trx.HSet(r.ctx, key, field, value)
 }
 func (r *RedisManager) GetFromHash(key string, field string) *redis.StringCmd {
-	return r.client.HGet(r.ctx, key, field)
+	return r.trx.HGet(r.ctx, key, field)
 }
 func (r *RedisManager) AddToSet(key string, value string) *redis.IntCmd {
-	return r.client.SAdd(r.ctx, key, value)
+	return r.trx.SAdd(r.ctx, key, value)
 }
-func (r *RedisManager) GetFromSet(key string) *redis.StringSliceCmd {
-	return r.client.SMembers(r.ctx, key)
+func (r *RedisManager) GetUserEntry(uID string) (*models.RedisUserEntry, error) {
+	user := models.RedisUserEntry{}
+	if userText, err := r.GetValueFromKVPair(uID); err == nil {
+		if err = json.Unmarshal([]byte(userText), &user); err != nil {
+			r.logger.Error(err)
+			return nil, err
+		} else {
+			return &user, nil
+		}
+	}
+	return &user, nil
+}
+func (r *RedisManager) FetchUserPod(userId string) string {
+	if user, err := r.GetUserEntry(userId); err == nil {
+		return user.ServerInstance
+	}
+}
+func (r *RedisManager) GetFromSet(key string) ([]string, error) {
+	return r.trx.SMembers(r.ctx, key).Result()
 }
 
-func (r *RedisManager) SubToPikaEvents(manager *services.PodManager) {
-	subscriber := r.client.Subscribe(r.ctx, "pika_events")
+func (r *RedisManager) MapUsersInRoom(roomId string, users []models.RedisUserEntry) *map[string]commands.AdminCommand {
+	if userList, err := r.GetFromSet(roomId); err == nil {
+		wg := sync.WaitGroup{}
+		wg.Add(len(userList))
+		for _, user := range userList {
+			go func(user string) {
+				defer wg.Done()
+				if userEntry, err := r.GetUserEntry(user); err == nil {
+					users = append(users, userEntry)
+				}
+			}(user)
+		}
+	}
+}
+
+func (r *RedisManager) SubToPikaEvents() {
+	subscriber := r.sub.Subscribe(r.ctx, "pika_events")
 	for {
 		msg, err := subscriber.ReceiveMessage(r.ctx)
 		if err != nil {
 			r.logger.Error(err)
 		}
-		podUpdate := models.PodUpdates{}
+		podUpdate := models.PresenceUpdate{}
 		err = json.Unmarshal([]byte(msg.Payload), &podUpdate)
 		if err != nil {
 			r.logger.Error(err)
 		}
 		fmt.Println("Got message: " + msg.Payload)
-		r.podUpdateHandler(manager, podUpdate)
+		r.handlePresenceUpdate(&podUpdate)
 	}
 }
 
-func (r *RedisManager) podUpdateHandler(manager *services.PodManager, podObject models.PodUpdates) {
-	r.logger.Info(podObject)
-	if podObject.State == "spawn" {
-		manager.AddPod(models.Pod{
-			PodName: podObject.PodName,
-			PodIp:   podObject.PodIp,
-		})
-	} else {
-		manager.RemovePod(podObject.PodName)
-	}
-}
-func (r *RedisManager) Orchestrate() {
-	r.logger.Info("Orchestrating")
-	go func() { //listen to Spawned Pods
-		defer r.logger.Info("Spawned Pods Listener Stopped")
-		r.spawnedPodsListener()
-	}()
-	go func() { //listen to killed Pods
-		defer r.logger.Info("Killed Pods Listener Stopped")
-		r.killedPodsListener()
-	}()
-	go func() { //Listen to Presence Updates
-		defer r.logger.Info("PresenceUpdate Listener Stopped")
-		r.PresenceUpdateListener()
-	}()
-}
+//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: PodHandlers :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
 
-//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: Listeners :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
-func (r *RedisManager) spawnedPodsListener() {
-	spawnSubscriber := r.client.Subscribe(r.ctx, "spawned_pods")
-	for {
-		msg, err := spawnSubscriber.ReceiveMessage(r.ctx)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		pod := models.Pod{}
-		err = json.Unmarshal([]byte(msg.Payload), &pod)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		r.logger.Info("Adding Pod:	", pod)
-		r.manager.AddPod(pod)
-	}
-}
-
-func (r *RedisManager) killedPodsListener() {
-	spawnSubscriber := r.client.Subscribe(r.ctx, "killed_pods")
-	for {
-		msg, err := spawnSubscriber.ReceiveMessage(r.ctx)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		pod := models.Pod{}
-		err = json.Unmarshal([]byte(msg.Payload), &pod)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		r.logger.Info("Removing Pod:	", pod.PodName)
-		r.manager.RemovePod(pod.PodName)
-	}
-}
-
-func (r *RedisManager) PresenceUpdateListener() {
+func (r *RedisManager) handlePresenceUpdate(update *models.PresenceUpdate) {
 
 }
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: DI :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
-func NewRedisManager(logger *zap.SugaredLogger, pod *services.PodManager) *RedisManager {
+func NewRedisManager(logger *zap.SugaredLogger) *RedisManager {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_URL"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-	ctx := context.Background()
-	rdb.Set(ctx, "foo", "bar", time.Hour*24)
-	return &RedisManager{logger, rdb, context.Background(), pod}
+	sub := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("REDIS_URL"),
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	return &RedisManager{logger, rdb, sub, context.Background()}
 }
 
 var RedisModule = fx.Option(fx.Provide(NewRedisManager))
