@@ -49,27 +49,44 @@ func (r *RedisManager) GetUserEntry(uID string) (*models.RedisUserEntry, error) 
 	}
 	return &user, nil
 }
-func (r *RedisManager) FetchUserPod(userId string) string {
+func (r *RedisManager) FetchUserPod(userId string) (string, error) {
 	if user, err := r.GetUserEntry(userId); err == nil {
-		return user.ServerInstance
+		return user.ServerInstance, nil
+	} else {
+		return "", err
 	}
 }
 func (r *RedisManager) GetFromSet(key string) ([]string, error) {
 	return r.trx.SMembers(r.ctx, key).Result()
 }
 
-func (r *RedisManager) MapUsersInRoom(roomId string, users []models.RedisUserEntry) *map[string]commands.AdminCommand {
+func (r *RedisManager) MapUsersInRoom(roomId string, users []models.RedisUserEntry, c *commands.AdminCommand) *map[string]commands.AdminCommand {
 	if userList, err := r.GetFromSet(roomId); err == nil {
+		userMap := map[string]commands.AdminCommand{}
 		wg := sync.WaitGroup{}
 		wg.Add(len(userList))
 		for _, user := range userList {
 			go func(user string) {
 				defer wg.Done()
-				if userEntry, err := r.GetUserEntry(user); err == nil {
-					users = append(users, userEntry)
+				if podName, err := r.FetchUserPod(user); err == nil {
+					if val, ok := userMap[podName]; ok {
+						val.Audience = append(val.Audience, user)
+					} else {
+						userMap[podName] = commands.AdminCommand{
+							Audience:     []string{user},
+							AudienceType: "user",
+							Command:      c.Command,
+							Data:         c.Data,
+						}
+					}
 				}
 			}(user)
 		}
+		wg.Wait()
+		return &userMap
+	} else {
+		r.logger.Error(err)
+		return nil
 	}
 }
 
