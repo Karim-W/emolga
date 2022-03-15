@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, aac *controllers.AdminActionsController) *fiber.App {
+func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, aac *controllers.AdminActionsController, p *controllers.PresenceController) *fiber.App {
 	app := fiber.New(fiber.Config{
 		Prefork:      false,
 		ServerHeader: "Fiber",
@@ -20,10 +20,8 @@ func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, aac *c
 	base := app.Group("/api/v1")
 	adminActionsGroup := base.Group("/Actions")
 	aac.SetupRoutes(&adminActionsGroup)
-	// app.Get("/", func(c *fiber.Ctx) error {
-	// 	log.Info("Hello world")
-	// 	return c.SendString("Hello, World 👋!")
-	// })
+	presenceGroup := base.Group("/Presence")
+	p.SetupRoutes(&presenceGroup)
 	app.Listen(":4000")
 	return app
 }

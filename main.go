@@ -15,7 +15,9 @@ func main() {
 		services.PodManagerModule,
 		redishelper.RedisModule,
 		services.AdminActionsServiceModule,
+		services.PresenceServiceModule,
 		controllers.AdminActionsControllerModule,
+		controllers.PresenceControllerModule,
 		router.Module,
 	)
 	defer app.Run()
