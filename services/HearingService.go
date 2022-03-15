@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"sync"
 
 	"github.com/karim-w/emolga/helpers/redishelper"
@@ -58,9 +59,24 @@ func (h *HearingService) GetUsersMappedByState(hearing string, tid string) (*map
 	}
 }
 
-// func (h *HearingService) AddPSTNUser(email string , phoneNumber string) error {
-// 	return h.redis.AddPSTNUser(email, phoneNumber)
-// }
+func (h *HearingService) AddPSTNUser(pUser models.PstnUser) error {
+	wg := sync.WaitGroup{}
+	wg.Add(len(pUser.HearingIds) + len(pUser.SessionIds) + 1)
+	go func() {
+		defer wg.Done()
+		if stringfiedText, err := json.Marshal(pUser); err == nil {
+			h.redis.AddKeyValuePair("Pstn-User-"+pUser.Email, string(stringfiedText))
+		}
+	}()
+	for _, hearingId := range pUser.HearingIds {
+		go func(hearingId string) {
+			defer wg.Done()
+			h.redis.AddToSet(hearingId, pUser.Email)
+		}(hearingId)
+	}
+	wg.Wait()
+	return nil
+}
 
 func HearingServiceProvider(log *zap.SugaredLogger, redis *redishelper.RedisManager) *HearingService {
 	return &HearingService{
