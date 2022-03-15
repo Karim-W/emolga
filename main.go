@@ -15,6 +15,8 @@ func main() {
 		redishelper.RedisModule,
 		services.AdminActionsServiceModule,
 		services.PresenceServiceModule,
+		services.SessionServiceModule,
+		controllers.SessionControllerModule,
 		controllers.AdminActionsControllerModule,
 		controllers.PresenceControllerModule,
 		router.Module,
