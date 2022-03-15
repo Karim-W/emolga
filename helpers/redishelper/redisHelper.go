@@ -83,23 +83,6 @@ func (r *RedisManager) MapUsersInRoom(userList []string, c *commands.AdminComman
 	return &userMap
 }
 
-func (r *RedisManager) SubToPikaEvents() {
-	r.logger.Infow("Subscribing to pika events")
-	subscriber := r.sub.Subscribe(r.ctx, "pika_events")
-	for {
-		msg, err := subscriber.ReceiveMessage(r.ctx)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		podUpdate := models.PresenceUpdate{}
-		err = json.Unmarshal([]byte(msg.Payload), &podUpdate)
-		if err != nil {
-			r.logger.Error(err)
-		}
-		r.handlePresenceUpdate(&podUpdate)
-	}
-}
-
 func (r *RedisManager) AddToZSet(key string, value string) (int64, error) {
 	return r.trx.ZAdd(r.ctx, key, &redis.Z{
 		Score:  0,
@@ -108,7 +91,11 @@ func (r *RedisManager) AddToZSet(key string, value string) (int64, error) {
 }
 
 func (r *RedisManager) AddToCommandsHash(key string, identifier string, value commands.AdminCommand) (int64, error) {
-	return r.trx.HSet(r.ctx, key+"-Commands", identifier, value.Command).Result()
+	if stringifedCommand, err := json.Marshal(value); err == nil {
+		return r.trx.HSet(r.ctx, key+"-Commands", identifier, stringifedCommand).Result()
+	} else {
+		return 0, err
+	}
 }
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: PodHandlers :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
@@ -156,22 +143,6 @@ func (r *RedisManager) HandlePublishCommand(c *commands.AdminCommand, tid string
 			}(hearing)
 		}
 	}
-}
-
-func (r *RedisManager) handlePresenceUpdate(update *models.PresenceUpdate) {
-	// for _, entity := range update.NotifiedEntities {
-	// 	// go func() {
-	// 	// 	if userList, err := r.GetFromSet(entity.EntityId); err == nil {
-	// 	// 		// updateObj :=
-	// 	// 		// command := commands.AdminCommand{
-	// 	// 		// 	Audience:     userList,
-	// 	// 		// 	AudienceType: "user",
-	// 	// 		// 	Command:      "sessionRoasterUpdate",
-	// 	// 		// 	Data:         update.
-	// 	// 		// }
-	// 	// 	}
-	// 	// }()
-	// }
 }
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: DI :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\

@@ -12,7 +12,6 @@ import (
 func main() {
 	app := fx.New(
 		karimslogger.LogsModule,
-		services.PodManagerModule,
 		redishelper.RedisModule,
 		services.AdminActionsServiceModule,
 		services.PresenceServiceModule,

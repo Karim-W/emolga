@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/karim-w/emolga/models"
 	"github.com/karim-w/emolga/services"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -14,8 +17,16 @@ type PresenceController struct {
 
 func (p *PresenceController) logPresence(ctx *fiber.Ctx) error {
 	p.logger.Info("Presence Update")
-
-	ctx.Status(200)
+	t := ctx.GetReqHeaders()
+	pr := models.PresenceUpdate{}
+	text := ctx.Body()
+	err := json.Unmarshal(text, &pr)
+	if err != nil {
+		p.logger.Errorf("Error while unmarshalling presence update: %v", err)
+		return ctx.Status(500).SendString("Error while unmarshalling presence update")
+	}
+	p.service.PublishPresence(&pr, t["Transactionid"])
+	ctx.Status(202)
 	return nil
 }
 

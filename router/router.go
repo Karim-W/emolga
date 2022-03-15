@@ -16,7 +16,6 @@ func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, aac *c
 		ServerHeader: "Fiber",
 		AppName:      "Emolga",
 	})
-	go redis.SubToPikaEvents()
 	base := app.Group("/api/v1")
 	adminActionsGroup := base.Group("/Actions")
 	aac.SetupRoutes(&adminActionsGroup)
