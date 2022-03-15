@@ -3,8 +3,6 @@ package redishelper
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -60,37 +58,33 @@ func (r *RedisManager) GetFromSet(key string) ([]string, error) {
 	return r.trx.SMembers(r.ctx, key).Result()
 }
 
-func (r *RedisManager) MapUsersInRoom(roomId string, users []models.RedisUserEntry, c *commands.AdminCommand) *map[string]commands.AdminCommand {
-	if userList, err := r.GetFromSet(roomId); err == nil {
-		userMap := map[string]commands.AdminCommand{}
-		wg := sync.WaitGroup{}
-		wg.Add(len(userList))
-		for _, user := range userList {
-			go func(user string) {
-				defer wg.Done()
-				if podName, err := r.FetchUserPod(user); err == nil {
-					if val, ok := userMap[podName]; ok {
-						val.Audience = append(val.Audience, user)
-					} else {
-						userMap[podName] = commands.AdminCommand{
-							Audience:     []string{user},
-							AudienceType: "user",
-							Command:      c.Command,
-							Data:         c.Data,
-						}
+func (r *RedisManager) MapUsersInRoom(userList []string, c *commands.AdminCommand) *map[string]commands.AdminCommand {
+	userMap := map[string]commands.AdminCommand{}
+	wg := sync.WaitGroup{}
+	wg.Add(len(userList))
+	for _, user := range userList {
+		go func(user string) {
+			defer wg.Done()
+			if podName, err := r.FetchUserPod(user); err == nil {
+				if val, ok := userMap[podName]; ok {
+					val.Audience = append(val.Audience, user)
+				} else {
+					userMap[podName] = commands.AdminCommand{
+						Audience:     []string{user},
+						AudienceType: "user",
+						Command:      c.Command,
+						Data:         c.Data,
 					}
 				}
-			}(user)
-		}
-		wg.Wait()
-		return &userMap
-	} else {
-		r.logger.Error(err)
-		return nil
+			}
+		}(user)
 	}
+	wg.Wait()
+	return &userMap
 }
 
 func (r *RedisManager) SubToPikaEvents() {
+	r.logger.Infow("Subscribing to pika events")
 	subscriber := r.sub.Subscribe(r.ctx, "pika_events")
 	for {
 		msg, err := subscriber.ReceiveMessage(r.ctx)
@@ -102,29 +96,97 @@ func (r *RedisManager) SubToPikaEvents() {
 		if err != nil {
 			r.logger.Error(err)
 		}
-		fmt.Println("Got message: " + msg.Payload)
 		r.handlePresenceUpdate(&podUpdate)
 	}
 }
 
+func (r *RedisManager) AddToZSet(key string, value string) (int64, error) {
+	return r.trx.ZAdd(r.ctx, key, &redis.Z{
+		Score:  0,
+		Member: value,
+	}).Result()
+}
+
+func (r *RedisManager) AddToCommandsHash(key string, identifier string, value commands.AdminCommand) (int64, error) {
+	return r.trx.HSet(r.ctx, key+"-Commands", identifier, value.Command).Result()
+}
+
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: PodHandlers :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
+func (r *RedisManager) HandlePublishCommand(c *commands.AdminCommand, tid string) {
+	r.logger.Infow("Handling publish command", c)
+	switch c.AudienceType {
+	case "user":
+		r.logger.Infow("Publishing to user")
+		mappedUsers := r.MapUsersInRoom(c.Audience, c)
+		for k, v := range *mappedUsers {
+			go func(k string, v commands.AdminCommand) {
+				r.AddToCommandsHash(k, tid, v)
+				r.AddToZSet(k, tid)
+			}(k, v)
+		}
+	case "session":
+		r.logger.Infow("Publishing to session(s):", c.Audience)
+		for _, session := range c.Audience {
+			go func(session string) {
+				if userList, err := r.GetFromSet(session); err == nil {
+					mappedUsers := r.MapUsersInRoom(userList, c)
+					for k, v := range *mappedUsers {
+						go func(k string, v commands.AdminCommand) {
+							r.AddToCommandsHash(k, tid, v)
+							r.AddToZSet(k, tid)
+						}(k, v)
+					}
+				}
+			}(session)
+
+		}
+	case "hearing":
+		r.logger.Infow("Publishing to hearing(s):", c.Audience)
+		for _, hearing := range c.Audience {
+			go func(hearing string) {
+				if userList, err := r.GetFromSet(hearing); err == nil {
+					mappedUsers := r.MapUsersInRoom(userList, c)
+					for k, v := range *mappedUsers {
+						go func(k string, v commands.AdminCommand) {
+							r.AddToCommandsHash(k, tid, v)
+							r.AddToZSet(k, tid)
+						}(k, v)
+					}
+				}
+			}(hearing)
+		}
+	}
+}
 
 func (r *RedisManager) handlePresenceUpdate(update *models.PresenceUpdate) {
-
+	// for _, entity := range update.NotifiedEntities {
+	// 	// go func() {
+	// 	// 	if userList, err := r.GetFromSet(entity.EntityId); err == nil {
+	// 	// 		// updateObj :=
+	// 	// 		// command := commands.AdminCommand{
+	// 	// 		// 	Audience:     userList,
+	// 	// 		// 	AudienceType: "user",
+	// 	// 		// 	Command:      "sessionRoasterUpdate",
+	// 	// 		// 	Data:         update.
+	// 	// 		// }
+	// 	// 	}
+	// 	// }()
+	// }
 }
 
 //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\:::: DI :::://\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
 func NewRedisManager(logger *zap.SugaredLogger) *RedisManager {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_URL"),
+		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 	sub := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_URL"),
+		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+	rdb.Set(context.Background(), "foo", "bar", time.Hour)
 	return &RedisManager{logger, rdb, sub, context.Background()}
 }
 

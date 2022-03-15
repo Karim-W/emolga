@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/karim-w/emolga/controllers"
 	"github.com/karim-w/emolga/helpers/redishelper"
 	"github.com/karim-w/emolga/router"
 	"github.com/karim-w/emolga/services"
@@ -13,6 +14,8 @@ func main() {
 		karimslogger.LogsModule,
 		services.PodManagerModule,
 		redishelper.RedisModule,
+		services.AdminActionsServiceModule,
+		controllers.AdminActionsControllerModule,
 		router.Module,
 	)
 	defer app.Run()

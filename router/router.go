@@ -19,12 +19,12 @@ func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager, aac *c
 	go redis.SubToPikaEvents()
 	base := app.Group("/api/v1")
 	adminActionsGroup := base.Group("/Actions")
-	aac.SetupRoutes(adminActionsGroup)
-	app.Get("/", func(c *fiber.Ctx) error {
-		log.Info("Hello world")
-		return c.SendString("Hello, World 👋!")
-	})
-	app.Listen(":3000")
+	aac.SetupRoutes(&adminActionsGroup)
+	// app.Get("/", func(c *fiber.Ctx) error {
+	// 	log.Info("Hello world")
+	// 	return c.SendString("Hello, World 👋!")
+	// })
+	app.Listen(":4000")
 	return app
 }
 
