@@ -13,6 +13,24 @@ definitions:
         additionalProperties: true
         type: object
     type: object
+  examples.StateData:
+    properties:
+      state:
+        type: string
+    type: object
+  examples.StateUpdateExample:
+    properties:
+      audience:
+        items:
+          type: string
+        type: array
+      audienceType:
+        type: string
+      command:
+        type: string
+      data:
+        $ref: '#/definitions/examples.StateData'
+    type: object
   models.NotifiedEntity:
     properties:
       entityId:
@@ -30,6 +48,21 @@ definitions:
         type: array
       userId:
         type: string
+    type: object
+  models.PstnUser:
+    properties:
+      email:
+        type: string
+      hearingId:
+        items:
+          type: string
+        type: array
+      phoneNumber:
+        type: string
+      sessionId:
+        items:
+          type: string
+        type: array
     type: object
   models.RedisUserEntry:
     properties:
@@ -61,6 +94,31 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/v1/UserState:
+    post:
+      consumes:
+      - application/json
+      description: api to set user state
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: command
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/examples.StateUpdateExample'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: ""
+      summary: Set User State
+      tags:
+      - UserState
   /api/v1/UserState/hearing:
     get:
       consumes:
@@ -70,11 +128,6 @@ paths:
       - description: Transactionid
         in: header
         name: Transactionid
-        required: true
-        type: string
-      - description: Session Id
-        in: path
-        name: sessionId
         required: true
         type: string
       produces:
@@ -144,6 +197,74 @@ paths:
       summary: Publish an admin action
       tags:
       - Admin
+  /api/v1/hearing/{hearingId}:
+    get:
+      consumes:
+      - application/json
+      description: Api to get users in a hearing
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: Hearing Id
+        in: path
+        name: hearingId
+        required: true
+        type: string
+      - description: 'expanded: ture: for list of users +detail || mapped for list
+          of users +detail mapped by their state , anything else for just participant
+          id list'
+        in: query
+        name: expanded
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RedisUserEntry'
+            type: array
+      summary: Get users in a hearing
+      tags:
+      - Hearings
+  /api/v1/hearing/{hearingId}/users/pstn:
+    post:
+      consumes:
+      - application/json
+      description: Api to add PSTN User to a given hearing
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: Hearing Id
+        in: path
+        name: hearingId
+        required: true
+        type: string
+      - description: 'user entry: only email and phone needed'
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.PstnUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RedisUserEntry'
+            type: array
+      summary: add PSTN User to a given hearing
+      tags:
+      - Hearings
   /api/v1/presence:
     post:
       consumes:
@@ -169,4 +290,38 @@ paths:
       summary: Log a presence
       tags:
       - presence
+  /api/v1/session/{sessionId}:
+    get:
+      consumes:
+      - application/json
+      description: Api to get users in a session
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: session Id
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: 'expanded: ture: for list of users +detail || mapped for list
+          of users +detail mapped by their state , anything else for just participant
+          id list'
+        in: query
+        name: expanded
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RedisUserEntry'
+            type: array
+      summary: Get users in a session
+      tags:
+      - Sessions
 swagger: "2.0"

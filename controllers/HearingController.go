@@ -13,6 +13,20 @@ type HearingController struct {
 	service *services.HearingService
 }
 
+// @BasePath /Hearing
+
+// get users in a hearing
+// @Summary Get users in a hearing
+// @Schemes
+// @Description Api to get users in a hearing
+// @Tags Hearings
+// @Accept json
+// @Produce json
+// @Param Transactionid header string true "Transactionid"
+// @Param hearingId path string true "Hearing Id"
+// @Param expanded query string Array "expanded: ture: for list of users +detail || mapped for list of users +detail mapped by their state , anything else for just participant id list"
+// @Success 200 {object} []models.RedisUserEntry{}
+// @Router /api/v1/hearing/{hearingId} [get]
 func (h *HearingController) getUsersInHearing(ctx *fiber.Ctx) error {
 	expanded := ctx.Query("expanded")
 	tid := ctx.GetReqHeaders()["Transactionid"]
@@ -26,7 +40,7 @@ func (h *HearingController) getUsersInHearing(ctx *fiber.Ctx) error {
 		} else {
 			ctx.JSON(list)
 		}
-	case "userMapping":
+	case "mapped":
 		if list, err := h.service.GetUsersMappedByState(ctx.Params("Hearing"), tid); err != nil {
 			h.logger.Errorf("Error while getting users mapped by state: %v", err)
 			return ctx.Status(500).JSON(map[string]interface{}{
@@ -48,6 +62,20 @@ func (h *HearingController) getUsersInHearing(ctx *fiber.Ctx) error {
 	return nil
 }
 
+// @BasePath /Hearing
+
+// Add PSTN User
+// @Summary add PSTN User to a given hearing
+// @Schemes
+// @Description Api to add PSTN User to a given hearing
+// @Tags Hearings
+// @Accept json
+// @Produce json
+// @Param Transactionid header string true "Transactionid"
+// @Param hearingId path string true "Hearing Id"
+// @Param data body models.PstnUser{} true "user entry: only email and phone needed"
+// @Success 200 {object} []models.RedisUserEntry{}
+// @Router /api/v1/hearing/{hearingId}/users/pstn [post]
 func (h *HearingController) AddPSTNUser(ctx *fiber.Ctx) error {
 	tid := ctx.GetReqHeaders()["Transactionid"]
 	m := models.PstnUser{}
@@ -65,13 +93,14 @@ func (h *HearingController) AddPSTNUser(ctx *fiber.Ctx) error {
 		return ctx.Status(500).JSON(map[string]interface{}{
 			"error": err.Error(),
 		})
+	} else {
+		return ctx.SendStatus(202)
 	}
-	return nil
 }
 
 func (h *HearingController) SetupRoutes(rg *fiber.Router) {
-	(*rg).Get("/Hearing/:Hearing", h.getUsersInHearing)
-	(*rg).Post("/Hearing/:Hearing/users/pstn", h.AddPSTNUser)
+	(*rg).Get("/:Hearing", h.getUsersInHearing)
+	(*rg).Post("/:Hearing/users/pstn", h.AddPSTNUser)
 
 }
 func HearingControllerProvider(log *zap.SugaredLogger, h *services.HearingService) *HearingController {

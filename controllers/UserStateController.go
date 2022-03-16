@@ -49,7 +49,6 @@ func (u *UserStateController) getUserInSessionMapped(ctx *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param Transactionid header string true "Transactionid"
-// @Param sessionId path string true "Session Id"
 // @Success 200 {object} map[string]map[string]models.RedisUserEntry{}
 // @Router /api/v1/UserState/hearing [get]
 func (u *UserStateController) getUsersInHearingMapped(ctx *fiber.Ctx) error {
@@ -78,6 +77,19 @@ func (u *UserStateController) getUsersInHearingMapped(ctx *fiber.Ctx) error {
 	return nil
 }
 
+// @BasePath /UserState
+
+// set User State
+// @Summary Set User State
+// @Schemes
+// @Description api to set user state
+// @Tags UserState
+// @Accept json
+// @Produce json
+// @Param Transactionid header string true "Transactionid"
+// @Param data body examples.StateUpdateExample true "command"
+// @Success 202
+// @Router /api/v1/UserState [post]
 func (u *UserStateController) setUserState(ctx *fiber.Ctx) error {
 	tid := ctx.GetReqHeaders()["Transactionid"]
 	var c commands.AdminCommand

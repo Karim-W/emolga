@@ -23,6 +23,44 @@ var doc = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/UserState": {
+            "post": {
+                "description": "api to set user state",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserState"
+                ],
+                "summary": "Set User State",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "command",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/examples.StateUpdateExample"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/UserState/hearing": {
             "get": {
                 "description": "api to get user state map for n hearing Id",
@@ -42,13 +80,6 @@ var doc = `{
                         "description": "Transactionid",
                         "name": "Transactionid",
                         "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Session Id",
-                        "name": "sessionId",
-                        "in": "path",
                         "required": true
                     }
                 ],
@@ -148,6 +179,105 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/hearing/{hearingId}": {
+            "get": {
+                "description": "Api to get users in a hearing",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hearings"
+                ],
+                "summary": "Get users in a hearing",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Hearing Id",
+                        "name": "hearingId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "expanded: ture: for list of users +detail || mapped for list of users +detail mapped by their state , anything else for just participant id list",
+                        "name": "expanded",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RedisUserEntry"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/hearing/{hearingId}/users/pstn": {
+            "post": {
+                "description": "Api to add PSTN User to a given hearing",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hearings"
+                ],
+                "summary": "add PSTN User to a given hearing",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Hearing Id",
+                        "name": "hearingId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "user entry: only email and phone needed",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PstnUser"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RedisUserEntry"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/presence": {
             "post": {
                 "description": "Api to log a presence",
@@ -185,6 +315,54 @@ var doc = `{
                     }
                 }
             }
+        },
+        "/api/v1/session/{sessionId}": {
+            "get": {
+                "description": "Api to get users in a session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Get users in a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "session Id",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "expanded: ture: for list of users +detail || mapped for list of users +detail mapped by their state , anything else for just participant id list",
+                        "name": "expanded",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RedisUserEntry"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -206,6 +384,34 @@ var doc = `{
                 "data": {
                     "type": "object",
                     "additionalProperties": true
+                }
+            }
+        },
+        "examples.StateData": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "examples.StateUpdateExample": {
+            "type": "object",
+            "properties": {
+                "audience": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "audienceType": {
+                    "type": "string"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "data": {
+                    "$ref": "#/definitions/examples.StateData"
                 }
             }
         },
@@ -234,6 +440,29 @@ var doc = `{
                 },
                 "userId": {
                     "type": "string"
+                }
+            }
+        },
+        "models.PstnUser": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "hearingId": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "phoneNumber": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
