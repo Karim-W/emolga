@@ -3,5 +3,261 @@
     "info": {
         "contact": {}
     },
-    "paths": {}
+    "paths": {
+        "/api/v1/UserState/hearing": {
+            "get": {
+                "description": "api to get user state map for n hearing Id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserState"
+                ],
+                "summary": "Get User State Map for N hearings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session Id",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "$ref": "#/definitions/models.RedisUserEntry"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/UserState/session/{sessionId}": {
+            "get": {
+                "description": "api to get user state map for session users",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserState"
+                ],
+                "summary": "Get User State Map for session Users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session Id",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/models.RedisUserEntry"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/actions": {
+            "post": {
+                "description": "Api to publish an admin action",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Publish an admin action",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "command",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/commands.AdminCommand"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/presence": {
+            "post": {
+                "description": "Api to log a presence",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "presence"
+                ],
+                "summary": "Log a presence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transactionid",
+                        "name": "Transactionid",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "presence Update",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PresenceUpdate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "commands.AdminCommand": {
+            "type": "object",
+            "properties": {
+                "audience": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "audienceType": {
+                    "type": "string"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "models.NotifiedEntity": {
+            "type": "object",
+            "properties": {
+                "entityId": {
+                    "type": "string"
+                },
+                "entityType": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PresenceUpdate": {
+            "type": "object",
+            "properties": {
+                "notificationType": {
+                    "type": "string"
+                },
+                "notifiedEntities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.NotifiedEntity"
+                    }
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RedisUserEntry": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "hearings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "serverInstance": {
+                    "type": "string"
+                },
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "socketId": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "userEmail": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }

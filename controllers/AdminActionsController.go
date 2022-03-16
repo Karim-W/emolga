@@ -15,6 +15,19 @@ type AdminActionsController struct {
 	service *services.AdminActionsService
 }
 
+// @BasePath /Admin
+
+// Publish an admin action
+// @Summary Publish an admin action
+// @Schemes
+// @Description Api to publish an admin action
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param Transactionid header string true "Transactionid"
+// @Param data body commands.AdminCommand true "command"
+// @Success 202
+// @Router /api/v1/actions [post]
 func (a *AdminActionsController) PublishAdminAction(ctx *fiber.Ctx) error {
 	t := ctx.GetReqHeaders()
 	command := commands.AdminCommand{}

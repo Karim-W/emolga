@@ -15,6 +15,19 @@ type PresenceController struct {
 	service *services.PresenceService
 }
 
+// @BasePath /presence
+
+// Log a presence
+// @Summary Log a presence
+// @Schemes
+// @Description Api to log a presence
+// @Tags presence
+// @Accept json
+// @Produce json
+// @Param Transactionid header string true "Transactionid"
+// @Param data body models.PresenceUpdate true "presence Update"
+// @Success 202
+// @Router /api/v1/presence [post]
 func (p *PresenceController) logPresence(ctx *fiber.Ctx) error {
 	p.logger.Info("Presence Update")
 	t := ctx.GetReqHeaders()

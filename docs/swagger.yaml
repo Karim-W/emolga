@@ -1,4 +1,172 @@
+definitions:
+  commands.AdminCommand:
+    properties:
+      audience:
+        items:
+          type: string
+        type: array
+      audienceType:
+        type: string
+      command:
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+    type: object
+  models.NotifiedEntity:
+    properties:
+      entityId:
+        type: string
+      entityType:
+        type: string
+    type: object
+  models.PresenceUpdate:
+    properties:
+      notificationType:
+        type: string
+      notifiedEntities:
+        items:
+          $ref: '#/definitions/models.NotifiedEntity'
+        type: array
+      userId:
+        type: string
+    type: object
+  models.RedisUserEntry:
+    properties:
+      firstName:
+        type: string
+      hearings:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      lastName:
+        type: string
+      serverInstance:
+        type: string
+      sessions:
+        items:
+          type: string
+        type: array
+      socketId:
+        type: string
+      state:
+        type: string
+      type:
+        type: string
+      userEmail:
+        type: string
+    type: object
 info:
   contact: {}
-paths: {}
+paths:
+  /api/v1/UserState/hearing:
+    get:
+      consumes:
+      - application/json
+      description: api to get user state map for n hearing Id
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: Session Id
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              additionalProperties:
+                $ref: '#/definitions/models.RedisUserEntry'
+              type: object
+            type: object
+      summary: Get User State Map for N hearings
+      tags:
+      - UserState
+  /api/v1/UserState/session/{sessionId}:
+    get:
+      consumes:
+      - application/json
+      description: api to get user state map for session users
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: Session Id
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/models.RedisUserEntry'
+            type: object
+      summary: Get User State Map for session Users
+      tags:
+      - UserState
+  /api/v1/actions:
+    post:
+      consumes:
+      - application/json
+      description: Api to publish an admin action
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: command
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/commands.AdminCommand'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: ""
+      summary: Publish an admin action
+      tags:
+      - Admin
+  /api/v1/presence:
+    post:
+      consumes:
+      - application/json
+      description: Api to log a presence
+      parameters:
+      - description: Transactionid
+        in: header
+        name: Transactionid
+        required: true
+        type: string
+      - description: presence Update
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.PresenceUpdate'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: ""
+      summary: Log a presence
+      tags:
+      - presence
 swagger: "2.0"
