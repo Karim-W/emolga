@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/karim-w/emolga/controllers"
 	"github.com/karim-w/emolga/helpers/redishelper"
 	"go.uber.org/fx"
@@ -22,6 +24,8 @@ func SetupRoutes(log *zap.SugaredLogger, redis *redishelper.RedisManager,
 		ServerHeader: "Fiber",
 		AppName:      "Emolga",
 	})
+	app.Use(recover.New())
+	app.Use(cors.New())
 	base := app.Group("/api/v1")
 	adminActionsGroup := base.Group("/Actions")
 	aac.SetupRoutes(&adminActionsGroup)
