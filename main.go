@@ -16,9 +16,13 @@ func main() {
 		services.AdminActionsServiceModule,
 		services.PresenceServiceModule,
 		services.SessionServiceModule,
+		services.HearingServiceModule,
+		services.UserServiceModule,
+		controllers.HearingControllerModule,
 		controllers.SessionControllerModule,
 		controllers.AdminActionsControllerModule,
 		controllers.PresenceControllerModule,
+		controllers.UserStateControllerModule,
 		router.Module,
 	)
 	defer app.Run()

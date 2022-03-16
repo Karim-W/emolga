@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	clients "github.com/karim-w/emolga/clients"
 	"github.com/karim-w/emolga/helpers/redishelper"
 	"github.com/karim-w/emolga/models"
 	"go.uber.org/fx"
@@ -13,6 +14,7 @@ import (
 type HearingService struct {
 	logger *zap.SugaredLogger
 	redis  *redishelper.RedisManager
+	pndl   *clients.PineduleClient
 }
 
 func (h *HearingService) GetUsersInHearing(hearing string, tid string) (*[]string, error) {
@@ -36,6 +38,7 @@ func (h *HearingService) GetExpandedUsersInHearing(hId string, tid string) (*[]m
 				}
 			}(user)
 		}
+		wg.Wait()
 		return &users, nil
 	} else {
 		return nil, err
@@ -59,19 +62,26 @@ func (h *HearingService) GetUsersMappedByState(hearing string, tid string) (*map
 	}
 }
 
-func (h *HearingService) AddPSTNUser(pUser models.PstnUser) error {
+func (h *HearingService) AddPSTNUser(pUser models.PstnUser, tid string) error {
 	wg := sync.WaitGroup{}
-	wg.Add(len(pUser.HearingIds) + len(pUser.SessionIds) + 1)
+	wg.Add(len(pUser.HearingIds) + 1)
 	go func() {
 		defer wg.Done()
 		if stringfiedText, err := json.Marshal(pUser); err == nil {
 			h.redis.AddKeyValuePair("Pstn-User-"+pUser.Email, string(stringfiedText))
+		} else {
+			h.logger.Errorw("AddPSTNUser", "err:", err)
 		}
 	}()
 	for _, hearingId := range pUser.HearingIds {
 		go func(hearingId string) {
 			defer wg.Done()
-			h.redis.AddToSet(hearingId, pUser.Email)
+			h.redis.AddToSet(hearingId, "Pstn-User-"+pUser.Email)
+			if sid, err := h.pndl.FetchConfrenceIdFromHearingId(hearingId, tid); err == nil {
+				h.redis.AddToSet(sid, "Pstn-User-"+pUser.Email)
+			} else {
+				h.logger.Errorw("AddPSTNUser", "err:", err)
+			}
 		}(hearingId)
 	}
 	wg.Wait()

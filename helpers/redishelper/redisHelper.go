@@ -55,7 +55,7 @@ func (r *RedisManager) FetchUserPod(userId string) (string, error) {
 	}
 }
 func (r *RedisManager) GetFromSet(key string) ([]string, error) {
-	return r.trx.SMembers(r.ctx, key).Result()
+	return r.sub.SMembers(r.ctx, key).Result()
 }
 
 func (r *RedisManager) MapUsersInRoom(userList []string, c *commands.AdminCommand) *map[string]commands.AdminCommand {
@@ -88,6 +88,22 @@ func (r *RedisManager) AddToZSet(key string, value string) (int64, error) {
 		Score:  0,
 		Member: value,
 	}).Result()
+}
+
+func (r *RedisManager) UpdateUserState(userId string, state string) error {
+	if user, err := r.GetUserEntry(userId); err == nil {
+		user.State = state
+		if stringifedUser, err := json.Marshal(user); err == nil {
+			r.trx.Set(r.ctx, userId, stringifedUser, time.Hour)
+			return nil
+		} else {
+			r.logger.Error(err)
+			return err
+		}
+	} else {
+		r.logger.Error(err)
+		return err
+	}
 }
 
 func (r *RedisManager) AddToCommandsHash(key string, identifier string, value commands.AdminCommand) (int64, error) {

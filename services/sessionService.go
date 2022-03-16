@@ -38,6 +38,7 @@ func (s *SessionService) GetExpandedUsersInSession(sId string, tid string) (*[]m
 			}
 		}(user)
 	}
+	wg.Wait()
 	return &users, nil
 }
 
