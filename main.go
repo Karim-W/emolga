@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/karim-w/emolga/clients"
+	"github.com/karim-w/emolga/common"
 	"github.com/karim-w/emolga/controllers"
 	"github.com/karim-w/emolga/helpers/redishelper"
 	"github.com/karim-w/emolga/repo"
@@ -16,6 +17,7 @@ func main() {
 	app := fx.New(
 		karimslogger.LogsModule,
 		redishelper.RedisModule,
+		common.UserManagerModule,
 		hermes.Module,
 		clients.PineduleClientModule,
 		repo.HearingRepoModule,
