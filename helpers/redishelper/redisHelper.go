@@ -20,6 +20,10 @@ type RedisManager struct {
 	ctx    context.Context
 }
 
+func (r *RedisManager) GetTRXClient() *redis.Client {
+	return r.trx
+}
+
 func (r *RedisManager) AddKeyValuePair(key string, value string) *redis.StatusCmd {
 	return r.trx.Set(r.ctx, key, value, time.Hour*24)
 }
